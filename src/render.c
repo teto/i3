@@ -18,6 +18,7 @@ static void render_root(Con *con, Con *fullscreen);
 static void render_output(Con *con);
 static void render_con_split(Con *con, Con *child, render_params *p, int i);
 static void render_con_stacked(Con *con, Con *child, render_params *p, int i);
+static void render_con_sidestacked(Con *con, Con *child, render_params *p, int i);
 static void render_con_tabbed(Con *con, Con *child, render_params *p, int i);
 static void render_con_dockarea(Con *con, Con *child, render_params *p);
 
@@ -145,7 +146,8 @@ void render_con(Con *con, bool render_fullscreen) {
             if (con->layout == L_SPLITH || con->layout == L_SPLITV) {
                 render_con_split(con, child, &params, i);
             } else if (con->layout == L_STACKED) {
-                render_con_stacked(con, child, &params, i);
+                render_con_sidestacked(con, child, &params, i);
+//                render_con_stacked(con, child, &params, i);
             } else if (con->layout == L_TABBED) {
                 render_con_tabbed(con, child, &params, i);
             } else if (con->layout == L_DOCKAREA) {
@@ -433,6 +435,43 @@ static void render_con_stacked(Con *con, Con *child, render_params *p, int i) {
         child->rect.y += (p->deco_height * p->children);
         child->rect.height -= (p->deco_height * p->children);
     }
+}
+
+/*
+HACK matt, overrides legacy stack
+In data.h, we have layout_t defined (L_STACKED)
+Con defined in data.h as well, excerpt:
+//
+//     The position and size for this con. These coordinates are absolute. Note
+//    * that the rect of a container does not include the decoration. 
+//    struct Rect rect;
+//     The position and size of the actual client window. These coordinates are
+//     * relative to the container's rect. 
+//    struct Rect window_rect;
+//     The position and size of the container's decoration. These coordinates
+//     * are relative to the container's parent's rect. 
+//    struct Rect deco_rect;
+
+render_params defined in render.h
+*/
+static void render_con_sidestacked(Con *con, Con *child, render_params *p, int i) {
+    assert(con->layout == L_STACKED);
+    const uint32_t title_width = 80;
+
+    child->rect.x = p->x + title_width;
+    child->rect.y = p->y;
+    child->rect.width = p->rect.width - title_width;
+    child->rect.height = p->rect.height;
+
+    child->deco_rect.x = p->x - con->rect.x;
+    child->deco_rect.y = p->y - con->rect.y + (i * p->deco_height);
+    child->deco_rect.width = title_width; //child->rect.width
+    child->deco_rect.height = p->deco_height;
+
+//    if (p->children > 1 || (child->border_style != BS_PIXEL && child->border_style != BS_NONE)) {
+////        child->rect.y += (p->deco_height * p->children);
+////        child->rect.height -= (p->deco_height * p->children);
+//    }
 }
 
 static void render_con_tabbed(Con *con, Con *child, render_params *p, int i) {
